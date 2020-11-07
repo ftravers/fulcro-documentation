@@ -1,0 +1,147 @@
+* Overview
+
+Accompany this tutorial with working source by forking the github
+repo:
+
+: git@github.com:ftravers/fulcro-app.git
+
+Throughout the tutorial, git tags will be referenced.  Checkout the
+tag to have working code corresponding to that part of the tutorial.
+
+* Basic UI Element
+
+: github tag: hello-world
+
+In 
+
+: ./resources/public/index.html 
+
+we have: 
+
+#+begin_src html
+<html>
+ <meta charset="utf-8">
+  <body>
+    <div id="app"></div>
+    <script src="/js/main/main.js"></script>
+  </body>
+</html>
+#+end_src
+
+Here is a "Hello World" application:
+
+#+begin_src clojure
+(ns app.client
+  (:require
+   [com.fulcrologic.fulcro.application :as app]
+   [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
+   [com.fulcrologic.fulcro.dom :as dom]))
+
+(defonce app (app/fulcro-app))
+
+(defsc Root [_ _]
+  (dom/div "Hello World"))
+
+(defn ^:export init
+  "Shadow-cljs sets this up to be our entry-point function. See
+  shadow-cljs.edn `:init-fn` in the modules of the main build."
+  []
+  (app/mount! app Root "app")
+  (js/console.log "Loaded"))
+
+(defn ^:export refresh
+  "During development, shadow-cljs will call this on every hot reload
+  of source. See shadow-cljs.edn"
+  []
+  ;; re-mounting will cause forced UI refresh, update internals, etc.
+  (app/mount! app Root "app")
+  (js/console.log "Hot reload"))
+#+end_src
+
+In fulcro we create HTML with the _stateful components_, defsc, macro.
+Above a react div with "Hello World" is created with:
+
+#+begin_src clojure
+(defsc Root [_ _]
+  (dom/div "Hello World"))
+#+end_src
+
+The fulcro app is created with: 
+
+#+begin_src clojure
+(defonce app (app/fulcro-app))
+#+end_src
+
+Finally we load the app, specify the root component ~Root~ and this
+gets mounted into the ~<div>~ with id "app" in ~index.html~ with the
+command:
+
+#+begin_src clojure
+(app/mount! app Root "app")
+#+end_src
+
+
+* Lets create children
+
+HTML is a tree structure.  Under the root we are going to have more
+elements.  Here we show how to create child elements.
+
+Lets create an unordered list, ~<ul>~, that lists a person's name and
+age in an ~<li>~.
+
+The HTML would look like:
+
+#+begin_src html
+  <ul>
+    <li>Fenton is 40 years old</li>
+    <li>Alex is 39 years old</li>
+  </ul>
+#+end_src
+
+The corresponding fulcro would be:
+
+#+begin_src clojure
+(defsc Root [_ _]
+  (dom/ul
+   (dom/li "Fenton is 40 years old")
+   (dom/li "Alex is 39 years old")))
+#+end_src
+
+Okay that works, but it is very redundant and hard coded. It would be
+nice if we could create a reusable component.
+
+#+begin_src clojure
+  (defsc PersonAge [_ props]
+    (dom/li (str (:name props) " is " (:age props) " years old"))) 
+#+end_src
+
+before we can use this component we have to create a factory that can
+make ~PersonAge~ components.  This is done with:
+
+#+begin_src clojure
+(def ui-person-age (comp/factory PersonAge))
+#+end_src
+
+This creates the function ~ui-person-age~ which we can call like so:
+
+#+begin_src clojure
+  (defsc Root [_ _]
+    (dom/ul
+     (ui-person-age {:name "Fenton" :age 40})
+     (ui-person-age {:name "Alex" :age 39})))
+#+end_src
+
+** mapping a list of data
+
+: github tag: map-factory
+
+The html above looks like a list, and calling ~ui-person-age~ manually
+isn't how we handle lists in clojure.  We ~map~ over the list.
+
+#+begin_src clojure
+(defsc Root [_ _]
+  (let [people [{:name "Fenton" :age 40}
+                {:name "Alex" :age 39}]]
+    (dom/ul
+     (map ui-person-age people))))
+#+end_src

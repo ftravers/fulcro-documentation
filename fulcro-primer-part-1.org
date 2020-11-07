@@ -88,7 +88,7 @@ props to it's children who do the same.
 
 Fulco uses a query language called EQL (EQL stands for EDN Query Language which
 is similar to GraphQL and implemented via the Pathom library) to retrieve data
-from the Fulcro database and construct the tree of data that it given to the
+from the Fulcro database and construct the tree of data that is given to the
 Root component.
 
 Understanding how this process works is key to understanding Fulcro
@@ -97,7 +97,7 @@ and unlocking the benefits of this approach.
 * Most Basic Fulcro App
 
 To explore these ideas, we'll use a simplified Fulcro app so we can focus on
-these keys elements and to avoid any unnecessary distractions in the code.
+these key elements and to avoid any unnecessary distractions in the code.
 
 Footnote:
 The Fulcro project provides two good starting templates one called
@@ -156,28 +156,29 @@ clojure maps and vectors we might come up with something like this:
 Table: Simple Data Structure
 #+BEGIN_SRC clojure
 
-[{:list/id  1
-  :list/name "Personal"
-  :list/items [{:item/id 1
-                :item/label "Buy Milk"
-                :item/status :notstarted}
-               {:item/id 2
-                :item/label "Cook Dinner"
-                :item/status :notstarted}
-               {:item/id 3
-                :item/label "Mail Letter"
-                :item/status :notstarted}]}
- {:list/id  2
-  :list/name "Work"
-  :list/items [{:item/id 4
-                :item/label "Write TPS Report"
-                :item/status :notstarted}
-               {:item/id 5
-                :item/label "Send Emails"
-                :item/status :notstarted}
-               {:item/id 6
-                :item/label "Have Meeting"
-                :item/status :notstarted}]}]
+  {:all-todo-lists
+   [{:list/id 1
+     :list/name "Personal"
+     :list/items [{:item/id 1
+                   :item/label "Buy Milk"
+                   :item/status :notstarted}
+                  {:item/id 2
+                   :item/label "Cook Dinner"
+                   :item/status :notstarted}
+                  {:item/id 3
+                   :item/label "Mail Letter"
+                   :item/status :notstarted}]}
+    {:list/id 2
+     :list/name "Work"
+     :list/items [{:item/id 4
+                   :item/label "Write TPS Report"
+                   :item/status :notstarted}
+                  {:item/id 5
+                   :item/label "Send Emails"
+                   :item/status :notstarted}
+                  {:item/id 6
+                   :item/label "Have Meeting"
+                   :item/status :notstarted}]}]}
 
 #+END_SRC
 
@@ -198,22 +199,23 @@ track.
 To get closer we need to add normalization which will make sure that we can
 avoid problem with duplicate data and caching.
 
-Normalization is a concept that has been around since databases were invented
-and organizes the data so that each item only appears once. This is accomplished
-by using tables and references or "pointers". I could go into a long description
-of database normalization techniques but it's is probably easier to explain by
+Normalization is a concept that has been around since databases were
+invented.  Normalization organizes the data so that each item only
+appears once. This is accomplished by using tables and references or
+"pointers". I could go into a long description of database
+normalization techniques but it's is probably easier to explain by
 simply normalizing our example data:
 
 Table: Normalized Simple Data Structure
 #+BEGIN_SRC clojure
 
-{:LIST  { 1 {:list/id 1
+  {:LIST {1 {:list/id 1
              :list/name "Personal"
              :list/items [[:ITEM 1] [:ITEM 2] [:ITEM 3]]}
-          2 {:list/id  2
+          2 {:list/id 2
              :list/name "Work"
              :list/items [[:ITEM 4] [:ITEM 5] [:ITEM 6]]}}
- :ITEM {  1 {:item/id 1
+   :ITEM {1 {:item/id 1
              :item/label "Buy Milk"
              :item/status :notstarted}
           2 {:item/id 2
@@ -230,7 +232,7 @@ Table: Normalized Simple Data Structure
              :item/status :notstarted}
           6 {:item/id 6
              :item/label "Have Meeting"
-             :item/status :notstarted}}
+             :item/status :notstarted}}}
 
 #+END_SRC
 
@@ -278,19 +280,23 @@ Anything that has a distinct ID is called a *"node"*. An example node from our
 above example would be:
 
 #+BEGIN_SRC clojure
-;; This whole thing is a node:
+  ;; This whole thing is a node:
 
-{  1 {:list/id 1
-      :list/name "Personal"
-      :list/items [[:ITEM 1] [:ITEM 2] [:ITEM 3]]}
+  {  1 {:list/id 1
+        :list/name "Personal"
+        :list/items [[:ITEM 1] [:ITEM 2] [:ITEM 3]]}
 
-;; And this is a different node:
+  ;; And this is a different node:
 
-{  1 {:item/id 1
-      :item/label "Buy Milk"
-      :item/status :notstarted}}
+  {  1 {:item/id 1
+        :item/label "Buy Milk"
+        :item/status :notstarted}}
 
-;; NOTE: All nodes in the same table must have a distinct ID.
+  ;; NOTE: All nodes in the same table must have distinct IDs.
+
+  ;; Although the above two items are keyed with the same number, 1,
+  ;; and they have the same ~:item/id~, they belong to separate tables
+  ;; so we aren't violating the distinct IDs requirement.
 
 #+END_SRC
 
@@ -300,6 +306,8 @@ are the "value" part of a key-value pair that makes up a node. For example:
 #+BEGIN_SRC clojure
 ;; The node is the map including the ID
 ;; ↓
+;; ↓  This is the ID, or key
+;; ↓  ↓
    {  1 {:item/id 1
          :item/label "Buy Milk"
          :item/status :notstarted}}
@@ -320,8 +328,8 @@ missing piece that Fulcro needs is a way to correctly build the pointer that
 links nodes to other tables. We do this by supplying Fulcro with an *ident*.
 Idents serve two purposes:
 
-1) Idents allows us to uniquely identify a node in the database for queries.
-2) Idents tells Fulcro where to add new nodes when we add items to the app-db
+1) Idents allow us to uniquely identify a node in the database for queries.
+2) Idents tell Fulcro where to add new nodes when we add items to the app-db
    (i.e. in which table should this node live?)
 
 You can think of idents as being the thing that allows Fulcro to normalize the
@@ -444,7 +452,7 @@ Notice a couple things in the above example query:
 ;; !!NB!! If you are getting an ":undeclared-var" warning here, check the
 ;; troubleshooting section for hints.
 #+END_SRC
-
+============================================================================================================================
 - How to query the app-db from the repl? (adapted from 3.6.3 in the fulcro book)
 
 #+BEGIN_SRC clojure
